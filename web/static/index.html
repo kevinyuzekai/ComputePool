@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ComputePool · 设备算力聚合</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <div class="logo">CP</div>
+        <div>
+          <h1>ComputePool <span class="sub">设备算力聚合</span></h1>
+          <p class="tagline">Mac 编排 · iPhone / iPad Worker · 可拆分任务加速（非 OS CPU 融合）</p>
+        </div>
+      </div>
+      <div class="status-pill" id="statusPill">检测中…</div>
+    </header>
+
+    <section class="card tip-card">
+      <p class="tip">
+        <strong>诚实说明：</strong>本工具是局域网<strong>任务编排器</strong>，把可拆分的 CPU 作业分片到 Mac 本机协程 + 手机 / 平板 Worker。
+        <em>不是</em>透明的系统 CPU / GPU 融合，也不是越狱或系统级加速。适合演示哈希类批处理；普通 App 不会自动变快。
+      </p>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Hub 状态</h2>
+        <div class="actions" style="margin:0">
+          <button type="button" class="btn primary" id="btnStart">启动 Hub</button>
+          <button type="button" class="btn danger" id="btnStop">停止</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>监听</label>
+        <span class="muted" id="listenLabel">—</span>
+      </div>
+      <div class="form-row">
+        <label>Worker 加入</label>
+        <div class="join-box">
+          <div class="mono" id="joinURL">—</div>
+          <button type="button" class="btn ghost" id="btnCopy">复制 URL</button>
+        </div>
+      </div>
+      <div class="qr-hint" id="qrText">在 iPhone / iPad 的 ComputePoolWorker 中粘贴上述地址即可加入。</div>
+      <p class="hint">Bonjour 服务类型 <code>_computepool._tcp</code>（Darwin 上若有 dns-sd 会自动广播）。本机也会跑 local worker，没有手机也能演示。</p>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>在线设备</h2>
+        <button type="button" class="btn ghost" id="btnRefresh">刷新</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>名称</th>
+              <th>平台</th>
+              <th>核心</th>
+              <th>最近心跳</th>
+              <th>完成分片</th>
+              <th>近似吞吐</th>
+              <th>类型</th>
+            </tr>
+          </thead>
+          <tbody id="workerBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>算力对比（cpu_hash）</h2>
+      <p class="hint" style="margin-top:0">先只跑 Mac 本机 Worker，再跑 Mac + 全部在线设备，对比墙钟时间。任务为可拆分的 SHA-256 迭代。</p>
+      <div class="form-row">
+        <label>总迭代次数</label>
+        <input type="number" id="iterations" value="2000000" min="10000" step="100000" />
+      </div>
+      <div class="form-row">
+        <label>分片数</label>
+        <input type="number" id="shards" value="0" min="0" max="128" title="0 = 自动（约 2×CPU）" />
+      </div>
+      <div class="actions">
+        <button type="button" class="btn primary" id="btnBench">开始算力对比</button>
+        <button type="button" class="btn ghost" id="btnEcho">协议测试 echo</button>
+        <button type="button" class="btn ghost" id="btnSleep">协议测试 sleep</button>
+      </div>
+      <div class="progress"><span id="benchBar"></span></div>
+      <div class="metrics" id="benchMetrics" style="display:none">
+        <div class="metric">
+          <span class="label">Mac 单机</span>
+          <span class="value" id="localMs">—</span>
+        </div>
+        <div class="metric">
+          <span class="label">Mac + 设备</span>
+          <span class="value" id="poolMs">—</span>
+        </div>
+        <div class="metric">
+          <span class="label">加速比</span>
+          <span class="value accent" id="speedup">—</span>
+        </div>
+      </div>
+      <pre class="mono" id="benchLog" style="display:none"></pre>
+    </section>
+
+    <footer>
+      <span>ComputePool <span id="ver">0.1.0</span> · MIT</span>
+      <span>非透明 CPU 融合 · 仅可拆分作业</span>
+    </footer>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

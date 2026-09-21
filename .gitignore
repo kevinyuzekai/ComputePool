@@ -1,0 +1,13 @@
+*.dmg
+*.exe
+*.log
+*.test
+.DS_Store
+.idea/
+.vscode/
+bin/
+build/
+dist/
+*.xcuserstate
+xcuserdata/
+DerivedData/

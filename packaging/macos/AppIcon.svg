@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3d8bfd"/>
+      <stop offset="100%" style="stop-color:#5eead4"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="#0f1419"/>
+  <rect x="96" y="96" width="832" height="832" rx="180" fill="url(#g)"/>
+  <text x="512" y="590" text-anchor="middle" font-family="SF Pro Display, Helvetica, Arial" font-size="360" font-weight="800" fill="#0b1220">CP</text>
+</svg>

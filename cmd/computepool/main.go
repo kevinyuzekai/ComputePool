@@ -17,15 +17,18 @@ import (
 	"github.com/kevinyuzekai/ComputePool/internal/hub"
 	"github.com/kevinyuzekai/ComputePool/internal/localworker"
 	"github.com/kevinyuzekai/ComputePool/internal/mdns"
+	"github.com/kevinyuzekai/ComputePool/internal/paths"
 	"github.com/kevinyuzekai/ComputePool/web"
 )
 
 // Set via -ldflags "-X main.version=…"
-var version = "0.1.1"
+var version = "0.2.0"
 
 func main() {
 	listen := flag.String("listen", hub.DefaultListen, "Hub 监听地址（LAN，默认 0.0.0.0:9797）")
 	workers := flag.Int("local-workers", 0, "本机 worker 协程数（0 = NumCPU）")
+	inbox := flag.String("inbox", "", "图片 Inbox 目录（默认 ~/ComputePool-Inbox）")
+	outbox := flag.String("outbox", "", "图片 Outbox 目录（默认 ~/ComputePool-Outbox）")
 	openFlag := flag.Bool("open", false, "启动后打开浏览器")
 	noMDNS := flag.Bool("no-mdns", false, "禁用 Bonjour/mDNS 广播")
 	showVer := flag.Bool("version", false, "打印版本")
@@ -40,6 +43,16 @@ func main() {
 
 	h := hub.New(version)
 	h.SetListenAddr(*listen)
+	inDir, outDir := *inbox, *outbox
+	if inDir == "" {
+		inDir = paths.DefaultInbox()
+	}
+	if outDir == "" {
+		outDir = paths.DefaultOutbox()
+	}
+	if err := h.SetDirs(inDir, outDir); err != nil {
+		log.Fatalf("inbox/outbox: %v", err)
+	}
 	h.Start()
 
 	pool := &localworker.Pool{Hub: h, Count: *workers}
@@ -84,6 +97,9 @@ func main() {
 	go func() {
 		log.Printf("ComputePool %s hub → http://%s  (join %s)", version, *listen, info.JoinURL)
 		log.Printf("本机 local workers: %d · 协议 _computepool._tcp", pool.Count)
+		ipaths := h.ImagePaths()
+		log.Printf("图片 Inbox: %s", ipaths.Inbox)
+		log.Printf("图片 Outbox: %s", ipaths.Outbox)
 		if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
 			log.Fatal(err)
 		}

@@ -29,6 +29,7 @@ func (h *Handler) Mount(mux *http.ServeMux) {
 	mux.HandleFunc("/api/worker/result", h.workerResult)
 	mux.HandleFunc("/api/test/echo", h.testEcho)
 	mux.HandleFunc("/api/test/sleep", h.testSleep)
+	h.mountImages(mux)
 }
 
 func writeJSON(w http.ResponseWriter, code int, v any) {
@@ -67,6 +68,7 @@ func (h *Handler) workers(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) jobs(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
+		r.Body = http.MaxBytesReader(w, r.Body, maxUploadBody)
 		var body struct {
 			Type      string          `json:"type"`
 			Payload   json.RawMessage `json:"payload"`
@@ -79,7 +81,7 @@ func (h *Handler) jobs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if body.Type == "" {
-			writeJSON(w, 400, map[string]string{"error": "type is required (cpu_hash | echo | sleep)"})
+			writeJSON(w, 400, map[string]string{"error": "type is required (cpu_hash | echo | sleep | image_resize)"})
 			return
 		}
 		job, err := h.Hub.SubmitSimple(body.Type, body.Payload, body.Shards, body.LocalOnly, body.Label)
@@ -197,6 +199,7 @@ func (h *Handler) workerResult(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 405, map[string]string{"error": "POST only"})
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBody)
 	var req hub.ResultRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, 400, map[string]string{"error": err.Error()})

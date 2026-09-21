@@ -10,9 +10,10 @@ import (
 
 // Types supported by workers (Mac local + iOS).
 const (
-	TypeCPUHash = "cpu_hash"
-	TypeEcho    = "echo"
-	TypeSleep   = "sleep"
+	TypeCPUHash     = "cpu_hash"
+	TypeEcho        = "echo"
+	TypeSleep       = "sleep"
+	TypeImageResize = "image_resize"
 )
 
 // CPUHashPayload asks the worker to run Iterations of SHA-256 starting from Seed.
@@ -80,6 +81,8 @@ func Run(jobType string, payload json.RawMessage) (json.RawMessage, Metrics, err
 		elapsed := time.Since(start).Milliseconds()
 		b, _ := json.Marshal(map[string]int64{"sleptMs": elapsed})
 		return b, Metrics{ElapsedMs: elapsed}, nil
+	case TypeImageResize:
+		return runImageResize(payload)
 	default:
 		return nil, Metrics{}, fmt.Errorf("unknown job type %q", jobType)
 	}

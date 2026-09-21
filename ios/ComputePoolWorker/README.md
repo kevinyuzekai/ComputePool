@@ -1,6 +1,6 @@
 # ComputePoolWorker（iOS / iPadOS）
 
-SwiftUI Worker：连接 Mac 上的 ComputePool Hub，领取并执行 `cpu_hash` / `echo` / `sleep` 分片。
+SwiftUI Worker：连接 Mac 上的 ComputePool Hub，领取并执行 `cpu_hash` / `echo` / `sleep` / `image_resize` 分片。
 
 ## 在 Mac 上运行（个人 Team 即可）
 
@@ -19,7 +19,13 @@ SwiftUI Worker：连接 Mac 上的 ComputePool Hub，领取并执行 `cpu_hash` 
 1. Mac 上启动 ComputePool Hub，控制面板复制加入 URL（形如 `http://192.168.x.x:9797`）
 2. 在 Worker App 粘贴 URL →「连接并领取任务」
 3. **保持 App 前台**（后台会被系统挂起，长轮询会停）
-4. 回到 Mac 控制面板点「算力对比」
+4. 回到 Mac 控制面板点「算力对比」，或用「图片任务」把 Inbox 图片扔到 iPad 处理
+
+### image_resize 限制
+
+- 单张原始体积建议 **≤ 12MB**（base64 JSON 协议；过大分片会失败并跳过）
+- 使用 UIKit / ImageIO：解码 → 按 `maxEdge` 等比缩放 → JPEG/PNG（WebP 尽力）
+- **保持 App 前台**；大图回传可能需数十秒
 
 ## 要求
 

@@ -102,7 +102,7 @@ final class WorkerClient: ObservableObject {
             URLQueryItem(name: "timeout", value: "20"),
         ]
         var req = URLRequest(url: comp.url!)
-        req.timeoutInterval = 30
+        req.timeoutInterval = 90
         let (data, resp) = try await URLSession.shared.data(for: req)
         guard let http = resp as? HTTPURLResponse else { return nil }
         if http.statusCode == 204 { return nil }
@@ -146,6 +146,7 @@ final class WorkerClient: ObservableObject {
         let url = base.appendingPathComponent("api/worker/result")
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
+        req.timeoutInterval = 120
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let resultObj = try JSONSerialization.jsonObject(with: result)
         var body: [String: Any] = [

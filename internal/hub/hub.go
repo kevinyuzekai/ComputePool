@@ -36,6 +36,9 @@ type Hub struct {
 	waiters []chan struct{}
 
 	localWorkers int
+
+	inboxDir  string
+	outboxDir string
 }
 
 // New creates a stopped hub.
@@ -100,6 +103,8 @@ type Info struct {
 	PendingShards int       `json:"pendingShards"`
 	HostnameHint  string    `json:"hostnameHint"`
 	ServiceType   string    `json:"serviceType"`
+	InboxDir      string    `json:"inboxDir,omitempty"`
+	OutboxDir     string    `json:"outboxDir,omitempty"`
 }
 
 func (h *Hub) Info() Info {
@@ -133,6 +138,8 @@ func (h *Hub) Info() Info {
 		PendingShards: len(h.pending),
 		HostnameHint:  runtime.GOOS + "/" + runtime.GOARCH,
 		ServiceType:   "_computepool._tcp",
+		InboxDir:      h.inboxDir,
+		OutboxDir:     h.outboxDir,
 	}
 }
 

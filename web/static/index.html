@@ -21,8 +21,8 @@
 
     <section class="card tip-card">
       <p class="tip">
-        <strong>诚实说明：</strong>本工具是局域网<strong>任务编排器</strong>，把可拆分的 CPU 作业分片到 Mac 本机协程 + 手机 / 平板 Worker。
-        <em>不是</em>透明的系统 CPU / GPU 融合，也不是越狱或系统级加速。适合演示哈希类批处理；普通 App 不会自动变快。
+        <strong>诚实说明：</strong>本工具是局域网<strong>任务编排器</strong>，把可拆分作业（含图片缩放压缩）分片到 Mac 本机协程 + 手机 / 平板 Worker。
+        <em>不是</em>透明的系统 CPU / GPU 融合，也不是越狱或系统级加速。适合批处理图片与演示哈希；不会劫持任意 Mac App，普通软件也不会自动变快。
       </p>
     </section>
 
@@ -73,12 +73,94 @@
     </section>
 
 
+
+    <section class="card" id="imageJobCard">
+      <div class="card-head">
+        <h2>图片任务（扔到 iPad）</h2>
+        <button type="button" class="btn ghost" id="btnImgScan">扫描 Inbox</button>
+      </div>
+      <p class="hint" style="margin-top:0">
+        把图片放进 Inbox，或在下方多选上传。Hub 按<strong>一张图一个分片</strong>调度到 Mac 本机 + 已连接的 iPhone / iPad Worker；
+        处理后的文件写入 Outbox。单张建议 &lt; 12MB（HTTP JSON base64 限制）。不会劫持任意 Mac App。
+      </p>
+      <div class="form-row">
+        <label for="imgInbox">Inbox 路径</label>
+        <input type="text" id="imgInbox" placeholder="~/ComputePool-Inbox" />
+      </div>
+      <div class="form-row">
+        <label>Outbox</label>
+        <span class="muted mono" id="imgOutbox">—</span>
+      </div>
+      <div class="form-row">
+        <label for="imgFiles">或选择文件</label>
+        <input type="file" id="imgFiles" accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" multiple />
+      </div>
+      <div class="form-row">
+        <label for="imgMaxEdge">maxEdge</label>
+        <input type="number" id="imgMaxEdge" value="1920" min="64" max="8192" step="64" />
+      </div>
+      <div class="form-row">
+        <label for="imgQuality">quality</label>
+        <input type="number" id="imgQuality" value="80" min="1" max="100" />
+      </div>
+      <div class="form-row">
+        <label for="imgFormat">format</label>
+        <select id="imgFormat">
+          <option value="jpeg" selected>jpeg</option>
+          <option value="png">png</option>
+          <option value="webp">webp（iOS 可用；Mac 回退 jpeg）</option>
+        </select>
+      </div>
+      <div class="form-row check-row">
+        <label for="imgLocalOnly">仅本机</label>
+        <label class="check">
+          <input type="checkbox" id="imgLocalOnly" />
+          <span>localOnly（不发给 iPad）</span>
+        </label>
+      </div>
+      <div class="form-row">
+        <label for="imgLabel">标签</label>
+        <input type="text" id="imgLabel" placeholder="可选" />
+      </div>
+      <div class="table-wrap" style="margin:10px 0">
+        <table>
+          <thead>
+            <tr><th>文件</th><th>大小</th><th>状态</th></tr>
+          </thead>
+          <tbody id="imgInboxBody">
+            <tr><td colspan="3" class="muted">点「扫描 Inbox」加载列表</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn primary" id="btnImgSubmit">提交图片批处理</button>
+      </div>
+      <div class="progress" id="imgProgressWrap" style="display:none"><span id="imgBar"></span></div>
+      <div class="job-status" id="imgStatus" style="display:none">
+        <div class="metrics" style="margin-top:12px">
+          <div class="metric">
+            <span class="label">Job ID</span>
+            <span class="value" id="imgJobId" style="font-size:1rem">—</span>
+          </div>
+          <div class="metric">
+            <span class="label">状态</span>
+            <span class="value" id="imgJobStatus">—</span>
+          </div>
+          <div class="metric">
+            <span class="label">分片 / Outbox</span>
+            <span class="value" id="imgJobMeta" style="font-size:0.95rem">—</span>
+          </div>
+        </div>
+        <pre class="mono" id="imgJobLog"></pre>
+      </div>
+    </section>
+
     <section class="card" id="customJobCard">
       <div class="card-head">
         <h2>自定义任务</h2>
         <button type="button" class="btn ghost" id="btnJobsRefresh">刷新列表</button>
       </div>
-      <p class="hint" style="margin-top:0">从界面提交 <code>cpu_hash</code> / <code>echo</code> / <code>sleep</code>，无需再手写 curl。友好字段与下方原始 JSON 双向同步。</p>
+      <p class="hint" style="margin-top:0">协议 / 算力演示：提交 <code>cpu_hash</code> / <code>echo</code> / <code>sleep</code>。图片请用上方「图片任务」。友好字段与下方原始 JSON 双向同步。</p>
 
       <div class="form-row">
         <label for="cjType">任务类型</label>
@@ -210,7 +292,7 @@
     </section>
 
     <footer>
-      <span>ComputePool <span id="ver">0.1.1</span> · MIT</span>
+      <span>ComputePool <span id="ver">0.2.0</span> · MIT</span>
       <span>非透明 CPU 融合 · 仅可拆分作业</span>
     </footer>
   </div>

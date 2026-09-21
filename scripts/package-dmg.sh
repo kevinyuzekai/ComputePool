@@ -5,7 +5,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-VERSION="${VERSION:-0.1.1}"
+VERSION="${VERSION:-0.2.0}"
 ARCH="${ARCH:-arm64}"
 case "$ARCH" in
   arm64|aarch64) ARCH=arm64 ;;
@@ -58,8 +58,9 @@ ComputePool 设备算力聚合 v${VERSION} — ${ARCH_HINT}
 2. 首次打开若被拦截：系统设置 → 隐私与安全性 → 仍要打开
    或在终端执行：xattr -cr /Applications/ComputePool.app
 3. 本应用没有原生窗口；启动后请用浏览器打开 http://127.0.0.1:9797
-4. 在 iPhone / iPad 安装 ComputePoolWorker，粘贴加入 URL 保持连接
-5. 在控制面板点「算力对比」查看 Mac 单机 vs Mac+设备加速
+4. 在 iPhone / iPad 用 Xcode 安装 ComputePoolWorker（需 0.2.0+ 才支持图片），粘贴加入 URL 保持前台
+5. 控制面板「图片任务」：扫描 Inbox / 上传 → 提交；结果在 ~/ComputePool-Outbox
+6. 「算力对比」仍可用于 Mac 单机 vs Mac+设备加速演示
 
 请下载与本机芯片匹配的 DMG：
   · Apple Silicon (M1/M2/M3/…) → ComputePool-*-arm64.dmg

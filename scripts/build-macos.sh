@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-VERSION="${VERSION:-0.1.1}"
+VERSION="${VERSION:-0.2.0}"
 ARCH="${ARCH:-arm64}"
 case "$ARCH" in
   arm64|aarch64) ARCH=arm64; GOARCH=arm64; ARCH_LABEL="Apple Silicon (arm64)" ;;

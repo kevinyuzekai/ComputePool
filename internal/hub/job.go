@@ -33,9 +33,10 @@ type Shard struct {
 	Result   json.RawMessage `json:"result,omitempty"`
 	Metrics  jobs.Metrics    `json:"metrics,omitempty"`
 	Error    string          `json:"error,omitempty"`
-	Assigned time.Time       `json:"assignedAt,omitempty"`
-	Finished time.Time       `json:"finishedAt,omitempty"`
-	LocalOnly bool           `json:"localOnly,omitempty"` // only Mac local workers may claim
+	Assigned  time.Time `json:"assignedAt,omitempty"`
+	Finished  time.Time `json:"finishedAt,omitempty"`
+	LocalOnly bool      `json:"localOnly,omitempty"` // only Mac local workers may claim
+	OutFile   string    `json:"outFile,omitempty"`   // written path for image_resize
 }
 
 // Assignment is what Poll returns to a worker.
@@ -65,6 +66,10 @@ type Job struct {
 	TotalIterations int64   `json:"totalIterations,omitempty"`
 	CompareOf       string  `json:"compareOf,omitempty"` // parent compare id
 	Phase           string  `json:"phase,omitempty"`     // local | pool
+
+	// Image batch meta
+	OutDir string `json:"outDir,omitempty"`
+	Note   string `json:"note,omitempty"`
 }
 
 // BenchmarkResult summarizes Mac-alone vs Mac+devices.
@@ -98,7 +103,7 @@ type ResultRequest struct {
 func (h *Hub) SubmitSimple(jobType string, payload json.RawMessage, shardCount int, localOnly bool, label string) (*Job, error) {
 	jobType = strings.TrimSpace(jobType)
 	if jobType == "" {
-		return nil, errBad("type is required (cpu_hash | echo | sleep)")
+		return nil, errBad("type is required (cpu_hash | echo | sleep | image_resize)")
 	}
 	if shardCount <= 0 {
 		shardCount = 1
@@ -107,9 +112,9 @@ func (h *Hub) SubmitSimple(jobType string, payload json.RawMessage, shardCount i
 		return nil, errBad("shards must be between 1 and 256")
 	}
 	switch jobType {
-	case jobs.TypeCPUHash, jobs.TypeEcho, jobs.TypeSleep:
+	case jobs.TypeCPUHash, jobs.TypeEcho, jobs.TypeSleep, jobs.TypeImageResize:
 	default:
-		return nil, errBad(fmt.Sprintf("unsupported type %q; use cpu_hash, echo, or sleep", jobType))
+		return nil, errBad(fmt.Sprintf("unsupported type %q; use cpu_hash, echo, sleep, or image_resize", jobType))
 	}
 	if len(payload) == 0 {
 		return nil, errBad("payload is required (JSON object)")
@@ -138,6 +143,17 @@ func (h *Hub) SubmitSimple(jobType string, payload json.RawMessage, shardCount i
 		}
 		if p.Ms < 0 {
 			return nil, errBad("sleep payload: ms must be >= 0")
+		}
+	case jobs.TypeImageResize:
+		var p jobs.ImageResizePayload
+		if err := json.Unmarshal(payload, &p); err != nil {
+			return nil, errBad("image_resize payload invalid")
+		}
+		if strings.TrimSpace(p.ImageBase64) == "" {
+			return nil, errBad("image_resize payload: imageBase64 required (prefer POST /api/images/batch for folders)")
+		}
+		if shardCount != 1 {
+			return nil, errBad("image_resize via /api/jobs requires shards=1; use /api/images/batch for multi-file")
 		}
 	}
 	h.mu.Lock()
@@ -481,6 +497,10 @@ func (h *Hub) SubmitResult(req ResultRequest) error {
 		shard.Status = ShardDone
 		shard.Result = req.Result
 		shard.Metrics = req.Metrics
+		h.writeImageOutboxLocked(job, shard)
+		if job.Type == jobs.TypeImageResize {
+			shard.Payload = nil // free inbound base64
+		}
 	}
 	job.DoneShards++
 	h.recordResult(req.WorkerID, req.Metrics.HashesPerSec)
@@ -555,6 +575,9 @@ func cloneJob(j *Job, withShards bool) *Job {
 		shards := make([]*Shard, len(j.Shards))
 		for i, s := range j.Shards {
 			sc := *s
+			if j.Type == jobs.TypeImageResize {
+				sc.Payload = omitImageBase64(sc.Payload)
+			}
 			shards[i] = &sc
 		}
 		cp.Shards = shards
@@ -562,6 +585,23 @@ func cloneJob(j *Job, withShards bool) *Job {
 		cp.Shards = nil
 	}
 	return &cp
+}
+
+func omitImageBase64(payload json.RawMessage) json.RawMessage {
+	if len(payload) == 0 {
+		return payload
+	}
+	var m map[string]any
+	if err := json.Unmarshal(payload, &m); err != nil {
+		return payload
+	}
+	if b64, ok := m["imageBase64"].(string); ok && b64 != "" && b64 != "[omitted]" {
+		m["imageBase64"] = "[omitted]"
+		if b, err := json.Marshal(m); err == nil {
+			return b
+		}
+	}
+	return payload
 }
 
 func runtimeNumCPU() int {

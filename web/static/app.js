@@ -49,7 +49,13 @@ async function refreshStatus() {
   }
   $("listenLabel").textContent = info.listenAddr + ` · 在线 ${info.onlineCount}/${info.workerCount} · 本机 ${info.localWorkers}`;
   $("joinURL").textContent = info.joinURL;
-  $("ver").textContent = info.version || "0.1.1";
+  $("ver").textContent = info.version || "0.2.0";
+  if ($("imgInbox") && info.inboxDir && !$("imgInbox").dataset.touched) {
+    $("imgInbox").value = info.inboxDir;
+  }
+  if ($("imgOutbox") && info.outboxDir) {
+    $("imgOutbox").textContent = info.outboxDir;
+  }
   $("qrText").textContent =
     `加入地址（可扫码/手输）\n${info.joinURL}\n\n` +
     `Bonjour: ${info.serviceType} · LAN ${info.lanIP}:${info.port}\n` +
@@ -142,11 +148,13 @@ async function pollBench() {
     clearInterval(pollTimer);
     pollTimer = null;
     refreshWorkers();
+    refreshJobsList().catch(() => {});
   }
   if (res.status === "failed") {
     $("speedup").textContent = "失败";
     clearInterval(pollTimer);
     pollTimer = null;
+    refreshJobsList().catch(() => {});
   }
 }
 
@@ -172,10 +180,12 @@ $("btnCopy").onclick = async () => {
 $("btnBench").onclick = () => startBench().catch((e) => alert(e.message));
 $("btnEcho").onclick = async () => {
   const job = await api("/api/test/echo", { method: "POST", body: JSON.stringify({ message: "hello-from-ui" }) });
+  refreshJobsList().catch(() => {});
   alert("已提交 echo job: " + job.id);
 };
 $("btnSleep").onclick = async () => {
   const job = await api("/api/test/sleep", { method: "POST", body: JSON.stringify({ ms: 300, shards: 2 }) });
+  refreshJobsList().catch(() => {});
   alert("已提交 sleep job: " + job.id);
 };
 
@@ -294,16 +304,21 @@ function summarizeJob(job) {
   lines.push(`type: ${job.type} · shards ${job.doneShards || 0}/${job.totalShards || 0}`);
   if (job.wallMs) lines.push(`wallMs: ${job.wallMs}`);
   if (job.label) lines.push(`label: ${job.label}`);
+  if (job.outDir) lines.push(`outDir: ${job.outDir}`);
   if (Array.isArray(job.shards) && job.shards.length) {
     const sample = job.shards.slice(0, 4).map((s) => {
       let r = s.result;
       if (typeof r === "string") {
         try { r = JSON.parse(r); } catch { /* keep */ }
       }
+      if (r && typeof r === "object" && r.imageBase64) {
+        r = Object.assign({}, r, { imageBase64: `[${String(r.imageBase64).length} chars]` });
+      }
       return {
         shardId: s.shardId,
         status: s.status,
         workerId: s.workerId,
+        outFile: s.outFile,
         error: s.error || undefined,
         result: r,
         metrics: s.metrics,
@@ -432,3 +447,181 @@ refreshAll = async function () {
 };
 
 initCustomJobUI();
+
+
+/* ---- 图片任务 ---- */
+let imgJobId = null;
+let imgPollTimer = null;
+
+function fmtBytes(n) {
+  n = Number(n) || 0;
+  if (n < 1024) return n + " B";
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
+  return (n / (1024 * 1024)).toFixed(2) + " MB";
+}
+
+async function scanInbox() {
+  const path = ($("imgInbox").value || "").trim();
+  const q = path ? ("?path=" + encodeURIComponent(path)) : "";
+  const data = await api("/api/images/inbox" + q);
+  if (data.inbox) {
+    $("imgInbox").value = data.inbox;
+  }
+  if (data.outbox) {
+    $("imgOutbox").textContent = data.outbox;
+  }
+  const body = $("imgInboxBody");
+  body.innerHTML = "";
+  const files = data.files || [];
+  if (!files.length) {
+    body.innerHTML = `<tr><td colspan="3" class="muted">Inbox 为空 — 把 jpg/png 放进该目录后重扫</td></tr>`;
+    return data;
+  }
+  for (const f of files) {
+    const tr = document.createElement("tr");
+    const st = f.skip
+      ? `<span class="badge down">跳过</span> ${escapeHtml(f.skip)}`
+      : `<span class="badge up">可提交</span>`;
+    tr.innerHTML = `
+      <td>${escapeHtml(f.name)}</td>
+      <td>${fmtBytes(f.bytes)}</td>
+      <td>${st}</td>`;
+    body.appendChild(tr);
+  }
+  return data;
+}
+
+function summarizeImageJob(job) {
+  const lines = [];
+  lines.push(`status: ${job.status}`);
+  lines.push(`type: ${job.type} · shards ${job.doneShards || 0}/${job.totalShards || 0}`);
+  if (job.wallMs) lines.push(`wallMs: ${job.wallMs}`);
+  if (job.outDir) lines.push(`outDir: ${job.outDir}`);
+  if (job.note) lines.push(`note: ${job.note}`);
+  if (Array.isArray(job.shards)) {
+    const sample = job.shards.slice(0, 8).map((s) => {
+      let r = s.result;
+      if (typeof r === "string") {
+        try { r = JSON.parse(r); } catch { /* */ }
+      }
+      if (r && r.imageBase64) {
+        r = { ...r, imageBase64: `[${String(r.imageBase64).length} chars]` };
+      }
+      return {
+        shardId: s.shardId,
+        status: s.status,
+        outFile: s.outFile,
+        error: s.error || undefined,
+        result: r,
+      };
+    });
+    lines.push(JSON.stringify(sample, null, 2));
+    if (job.shards.length > 8) lines.push(`… 另有 ${job.shards.length - 8} 个分片`);
+  }
+  return lines.join("\n");
+}
+
+function renderImgStatus(job) {
+  $("imgStatus").style.display = "block";
+  $("imgProgressWrap").style.display = "block";
+  $("imgJobId").textContent = job.id || "—";
+  $("imgJobStatus").textContent = job.status || "—";
+  const done = job.doneShards || 0;
+  const total = job.totalShards || 1;
+  const pct = Math.min(100, Math.round((done / total) * 100));
+  $("imgBar").style.width = pct + "%";
+  const out = job.outDir || "—";
+  $("imgJobMeta").textContent = `${done}/${total}`;
+  $("imgOutbox").textContent = out;
+  $("imgJobLog").textContent = summarizeImageJob(job);
+}
+
+async function submitImageBatch() {
+  const fileInput = $("imgFiles");
+  const files = fileInput && fileInput.files ? Array.from(fileInput.files) : [];
+  const maxEdge = Number($("imgMaxEdge").value) || 1920;
+  const quality = Number($("imgQuality").value) || 80;
+  const format = $("imgFormat").value || "jpeg";
+  const localOnly = !!$("imgLocalOnly").checked;
+  const label = ($("imgLabel").value || "").trim();
+
+  $("imgStatus").style.display = "block";
+  $("imgProgressWrap").style.display = "block";
+  $("imgJobId").textContent = "提交中…";
+  $("imgJobStatus").textContent = "—";
+  $("imgBar").style.width = "2%";
+  $("imgJobLog").textContent = "提交图片批处理…";
+
+  let job;
+  if (files.length > 0) {
+    const fd = new FormData();
+    fd.append("maxEdge", String(maxEdge));
+    fd.append("quality", String(quality));
+    fd.append("format", format);
+    if (localOnly) fd.append("localOnly", "true");
+    if (label) fd.append("label", label);
+    for (const f of files) fd.append("files", f, f.name);
+    const res = await fetch("/api/images/batch", { method: "POST", body: fd });
+    const text = await res.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; }
+    if (!res.ok) throw new Error((data && data.error) || res.statusText);
+    job = data;
+  } else {
+    const inboxPath = ($("imgInbox").value || "").trim();
+    job = await api("/api/images/batch", {
+      method: "POST",
+      body: JSON.stringify({
+        inboxPath: inboxPath || undefined,
+        maxEdge,
+        quality,
+        format,
+        localOnly,
+        label,
+      }),
+    });
+  }
+
+  imgJobId = job.id;
+  renderImgStatus(job);
+  if (imgPollTimer) clearInterval(imgPollTimer);
+  imgPollTimer = setInterval(() => pollImgJob().catch(console.error), 500);
+  refreshJobsList().catch(() => {});
+  if (fileInput) fileInput.value = "";
+}
+
+async function pollImgJob() {
+  if (!imgJobId) return;
+  const job = await api("/api/jobs/" + imgJobId);
+  renderImgStatus(job);
+  if (job.status === "done" || job.status === "failed" || job.status === "cancelled") {
+    clearInterval(imgPollTimer);
+    imgPollTimer = null;
+    refreshJobsList().catch(() => {});
+    refreshWorkers().catch(() => {});
+  }
+}
+
+function initImageJobUI() {
+  if (!$("btnImgSubmit")) return;
+  if ($("imgInbox")) {
+    $("imgInbox").addEventListener("input", () => {
+      $("imgInbox").dataset.touched = "1";
+    });
+  }
+  $("btnImgScan").onclick = () => scanInbox().catch((e) => alert(e.message));
+  $("btnImgSubmit").onclick = () => submitImageBatch().catch((e) => {
+    $("imgJobLog").textContent = "错误: " + e.message;
+    $("imgJobStatus").textContent = "失败";
+    alert(e.message);
+  });
+  // preload paths
+  api("/api/images/paths").then((p) => {
+    if ($("imgInbox") && !$("imgInbox").dataset.touched && p.inbox) {
+      $("imgInbox").value = p.inbox;
+    }
+    if ($("imgOutbox") && p.outbox) $("imgOutbox").textContent = p.outbox;
+  }).catch(() => {});
+}
+
+initImageJobUI();

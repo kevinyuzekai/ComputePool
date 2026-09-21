@@ -68,14 +68,18 @@ func (h *Handler) workers(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) jobs(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		var body struct {
-			Type       string          `json:"type"`
-			Payload    json.RawMessage `json:"payload"`
-			Shards     int             `json:"shards"`
-			LocalOnly  bool            `json:"localOnly"`
-			Label      string          `json:"label"`
+			Type      string          `json:"type"`
+			Payload   json.RawMessage `json:"payload"`
+			Shards    int             `json:"shards"`
+			LocalOnly bool            `json:"localOnly"`
+			Label     string          `json:"label"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			writeJSON(w, 400, map[string]string{"error": err.Error()})
+			writeJSON(w, 400, map[string]string{"error": "invalid JSON body: " + err.Error()})
+			return
+		}
+		if body.Type == "" {
+			writeJSON(w, 400, map[string]string{"error": "type is required (cpu_hash | echo | sleep)"})
 			return
 		}
 		job, err := h.Hub.SubmitSimple(body.Type, body.Payload, body.Shards, body.LocalOnly, body.Label)
@@ -84,6 +88,10 @@ func (h *Handler) jobs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, 200, job)
+		return
+	}
+	if r.Method != http.MethodGet {
+		writeJSON(w, 405, map[string]string{"error": "GET or POST only"})
 		return
 	}
 	writeJSON(w, 200, map[string]any{"jobs": h.Hub.ListJobs(30)})

@@ -72,6 +72,109 @@
       </div>
     </section>
 
+
+    <section class="card" id="customJobCard">
+      <div class="card-head">
+        <h2>自定义任务</h2>
+        <button type="button" class="btn ghost" id="btnJobsRefresh">刷新列表</button>
+      </div>
+      <p class="hint" style="margin-top:0">从界面提交 <code>cpu_hash</code> / <code>echo</code> / <code>sleep</code>，无需再手写 curl。友好字段与下方原始 JSON 双向同步。</p>
+
+      <div class="form-row">
+        <label for="cjType">任务类型</label>
+        <select id="cjType">
+          <option value="cpu_hash">cpu_hash · SHA-256 迭代</option>
+          <option value="echo">echo · 协议回显</option>
+          <option value="sleep">sleep · 延时</option>
+        </select>
+      </div>
+
+      <div id="cjFieldsCpu">
+        <div class="form-row">
+          <label for="cjSeed">seed</label>
+          <input type="text" id="cjSeed" value="demo" />
+        </div>
+        <div class="form-row">
+          <label for="cjIterations">iterations</label>
+          <input type="number" id="cjIterations" value="500000" min="1" step="10000" />
+        </div>
+      </div>
+      <div id="cjFieldsEcho" style="display:none">
+        <div class="form-row">
+          <label for="cjMessage">message</label>
+          <input type="text" id="cjMessage" value="hello-from-ui" />
+        </div>
+      </div>
+      <div id="cjFieldsSleep" style="display:none">
+        <div class="form-row">
+          <label for="cjMs">ms</label>
+          <input type="number" id="cjMs" value="300" min="0" max="60000" step="50" />
+        </div>
+      </div>
+
+      <details class="advanced" open>
+        <summary>高级 · 原始 JSON payload</summary>
+        <textarea id="cjPayload" rows="5" spellcheck="false"></textarea>
+        <p class="hint">编辑 JSON 后，能解析时会回写上方友好字段；字段改动也会覆盖 JSON。</p>
+      </details>
+
+      <div class="form-row">
+        <label for="cjShards">分片数</label>
+        <input type="number" id="cjShards" value="4" min="1" max="256" />
+      </div>
+      <div class="form-row">
+        <label for="cjLabel">标签</label>
+        <input type="text" id="cjLabel" placeholder="可选，如 我的批处理" />
+      </div>
+      <div class="form-row check-row">
+        <label for="cjLocalOnly">仅本机</label>
+        <label class="check">
+          <input type="checkbox" id="cjLocalOnly" />
+          <span>localOnly（只调度 Mac local workers）</span>
+        </label>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn primary" id="btnSubmitJob">提交任务</button>
+      </div>
+
+      <div class="progress" id="cjProgressWrap" style="display:none"><span id="cjBar"></span></div>
+      <div class="job-status" id="cjStatus" style="display:none">
+        <div class="metrics" style="margin-top:12px">
+          <div class="metric">
+            <span class="label">Job ID</span>
+            <span class="value" id="cjJobId" style="font-size:1rem">—</span>
+          </div>
+          <div class="metric">
+            <span class="label">状态</span>
+            <span class="value" id="cjJobStatus">—</span>
+          </div>
+          <div class="metric">
+            <span class="label">分片 / 耗时</span>
+            <span class="value" id="cjJobMeta">—</span>
+          </div>
+        </div>
+        <pre class="mono" id="cjJobLog"></pre>
+      </div>
+
+      <h3 class="subhead">最近任务</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>类型</th>
+              <th>标签</th>
+              <th>状态</th>
+              <th>分片</th>
+              <th>耗时</th>
+            </tr>
+          </thead>
+          <tbody id="jobsBody"></tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="card">
       <h2>算力对比（cpu_hash）</h2>
       <p class="hint" style="margin-top:0">先只跑 Mac 本机 Worker，再跑 Mac + 全部在线设备，对比墙钟时间。任务为可拆分的 SHA-256 迭代。</p>
@@ -107,7 +210,7 @@
     </section>
 
     <footer>
-      <span>ComputePool <span id="ver">0.1.0</span> · MIT</span>
+      <span>ComputePool <span id="ver">0.1.1</span> · MIT</span>
       <span>非透明 CPU 融合 · 仅可拆分作业</span>
     </footer>
   </div>

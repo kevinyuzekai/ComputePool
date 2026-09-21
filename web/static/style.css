@@ -116,3 +116,34 @@ footer {
   display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2));
   width: 0%; transition: width 0.3s;
 }
+
+select, textarea {
+  background: #0f1724; border: 1px solid var(--border); color: var(--text);
+  border-radius: 8px; padding: 8px 10px; width: 100%;
+  font: inherit;
+}
+textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem; resize: vertical; min-height: 96px; line-height: 1.4;
+}
+.advanced {
+  margin: 8px 0 12px; padding: 10px 12px;
+  border: 1px dashed var(--border); border-radius: 8px; background: #0f172488;
+}
+.advanced summary {
+  cursor: pointer; color: var(--muted); font-size: 0.85rem; margin-bottom: 8px;
+  user-select: none;
+}
+.advanced[open] summary { margin-bottom: 10px; }
+.check-row { align-items: center; }
+.check {
+  display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 0.85rem;
+  cursor: pointer;
+}
+.check input { width: auto; accent-color: var(--accent); }
+.subhead {
+  margin: 18px 0 8px; font-size: 0.9rem; font-weight: 600; color: var(--muted);
+}
+.job-status .value { word-break: break-all; }
+tr.job-row { cursor: pointer; }
+tr.job-row:hover td { background: #24304455; }

@@ -7,7 +7,7 @@
 > 它是一个 **LAN 任务编排器**：把**可拆分**的作业切成 shard，调度到 Mac 本机 worker 协程 + 手机 / 平板 Worker。  
 > 适合演示与批处理（如 `cpu_hash`）；不要指望「插上 iPad，系统就多了几个核」。
 
-**English:** ComputePool is a LAN orchestrator that shards *splittable* CPU jobs across the Mac (local goroutine workers) and iPhone/iPad workers. It is **not** transparent OS-level CPU/GPU fusion. Version **0.1.0**, MIT.
+**English:** ComputePool is a LAN orchestrator that shards *splittable* CPU jobs across the Mac (local goroutine workers) and iPhone/iPad workers. It is **not** transparent OS-level CPU/GPU fusion. Version **0.1.1**, MIT.
 
 ---
 
@@ -21,6 +21,7 @@
 | 本机 local worker（无手机也能跑） | ✅ |
 | 演示作业 `cpu_hash`（SHA-256 迭代）+ 算力对比 | ✅ |
 | 协议测试 `echo` / `sleep` | ✅ |
+| Web UI「自定义任务」（类型 + payload + 分片提交） | ✅ |
 | 嵌入式 zh-CN Web UI + 复制加入 URL | ✅ |
 | iOS / iPadOS SwiftUI Worker | ✅ |
 | `.app` / `.dmg` 双架构脚本 | ✅（DMG 需在 Mac 上打） |
@@ -33,7 +34,7 @@
 ```
 ┌──────────────────┐     HTTP/JSON 长轮询      ┌─────────────────────┐
 │  Web UI :9797    │◄────────────────────────►│  Mac Hub (Go)       │
-│  算力对比 / 设备  │                           │  注册表 · 分片队列   │
+│  自定义任务/对比  │                           │  注册表 · 分片队列   │
 └──────────────────┘                           │  local workers ×N   │
                                                └──────────┬──────────┘
                      ┌────────────────────────────────────┼────────────────┐
@@ -87,6 +88,7 @@ Base URL：`http://<mac-lan-ip>:9797`
 
 - `GET /api/status` · `POST /api/hub/start` · `POST /api/hub/stop`
 - `GET /api/workers` · `GET /api/jobs` · `GET /api/jobs/:id`
+- `POST /api/jobs` `{type,payload,shards,localOnly,label}` — 自定义任务入口
 - `POST /api/benchmark` `{iterations,shards}` → `GET /api/benchmark/:compareId`
 - `POST /api/test/echo` · `POST /api/test/sleep`
 
@@ -113,11 +115,11 @@ make build          # → bin/computepool
 ```bash
 # Apple Silicon
 ARCH=arm64 ./scripts/build-macos.sh
-ARCH=arm64 ./scripts/package-dmg.sh   # → build/macos/arm64/ComputePool-0.1.0-arm64.dmg（需 macOS + hdiutil）
+ARCH=arm64 ./scripts/package-dmg.sh   # → build/macos/arm64/ComputePool-0.1.1-arm64.dmg（需 macOS + hdiutil）
 
 # Intel Mac
 ARCH=amd64 ./scripts/build-macos.sh
-ARCH=amd64 ./scripts/package-dmg.sh   # → build/macos/amd64/ComputePool-0.1.0-amd64.dmg
+ARCH=amd64 ./scripts/package-dmg.sh   # → build/macos/amd64/ComputePool-0.1.1-amd64.dmg
 ```
 
 Darwin 上脚本会对 `.app` 做 **ad-hoc codesign**。Linux 可交叉编译出二进制与 `.app` 布局，但不能生成 DMG。
@@ -137,6 +139,26 @@ Darwin 上脚本会对 `.app` 做 **ad-hoc codesign**。Linux 可交叉编译出
 没有手机时，仅 Mac local workers 也能跑通对比（加速比接近 1×，用于自检）。
 
 ---
+
+## 自定义任务（Web UI）
+
+控制面板新增 **「自定义任务」** 区块，可在 Mac 应用里直接提交作业（不必再 curl）：
+
+1. 选择类型：`cpu_hash` / `echo` / `sleep`
+2. 填写友好字段（seed/iterations、message、ms）；高级区可编辑原始 JSON，与字段双向同步
+3. 设置分片数（默认 4）、可选标签、勾选「仅本机」(`localOnly`)
+4. 点 **提交任务** → `POST /api/jobs`，界面会轮询 `GET /api/jobs/:id` 显示状态与结果摘要
+5. 「最近任务」表可刷新；点击一行可查看详情
+
+等价 curl 示例：
+
+```bash
+curl -s -X POST http://127.0.0.1:9797/api/jobs \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"cpu_hash","payload":{"seed":"demo","iterations":500000},"shards":4,"label":"ui-demo"}'
+```
+
+「算力对比」区块保持不变，仍用于 Mac 单机 vs Mac+设备加速比演示。
 
 ## 目录结构
 

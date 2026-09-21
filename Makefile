@@ -1,6 +1,6 @@
 .PHONY: build test run tidy clean build-darwin-arm64 build-darwin-amd64 package-dmg package-dmg-amd64 app
 
-VERSION ?= 0.1.0
+VERSION ?= 0.1.1
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
 build:

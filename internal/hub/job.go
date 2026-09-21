@@ -3,6 +3,7 @@ package hub
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/kevinyuzekai/ComputePool/internal/jobs"
@@ -95,16 +96,49 @@ type ResultRequest struct {
 
 // SubmitSimple enqueues echo/sleep/cpu_hash with optional local-only flag.
 func (h *Hub) SubmitSimple(jobType string, payload json.RawMessage, shardCount int, localOnly bool, label string) (*Job, error) {
+	jobType = strings.TrimSpace(jobType)
+	if jobType == "" {
+		return nil, errBad("type is required (cpu_hash | echo | sleep)")
+	}
 	if shardCount <= 0 {
 		shardCount = 1
 	}
 	if shardCount > 256 {
-		shardCount = 256
+		return nil, errBad("shards must be between 1 and 256")
 	}
 	switch jobType {
 	case jobs.TypeCPUHash, jobs.TypeEcho, jobs.TypeSleep:
 	default:
-		return nil, errBad("unsupported type")
+		return nil, errBad(fmt.Sprintf("unsupported type %q; use cpu_hash, echo, or sleep", jobType))
+	}
+	if len(payload) == 0 {
+		return nil, errBad("payload is required (JSON object)")
+	}
+	if !json.Valid(payload) {
+		return nil, errBad("payload must be valid JSON")
+	}
+	switch jobType {
+	case jobs.TypeCPUHash:
+		var p jobs.CPUHashPayload
+		if err := json.Unmarshal(payload, &p); err != nil {
+			return nil, errBad("cpu_hash payload invalid: need {\"seed\":string,\"iterations\":number}")
+		}
+		if p.Iterations <= 0 {
+			return nil, errBad("cpu_hash payload: iterations must be > 0")
+		}
+	case jobs.TypeEcho:
+		var p jobs.EchoPayload
+		if err := json.Unmarshal(payload, &p); err != nil {
+			return nil, errBad("echo payload invalid: need {\"message\":string}")
+		}
+	case jobs.TypeSleep:
+		var p jobs.SleepPayload
+		if err := json.Unmarshal(payload, &p); err != nil {
+			return nil, errBad("sleep payload invalid: need {\"ms\":number}")
+		}
+		if p.Ms < 0 {
+			return nil, errBad("sleep payload: ms must be >= 0")
+		}
 	}
 	h.mu.Lock()
 	defer h.mu.Unlock()

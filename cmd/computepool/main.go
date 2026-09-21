@@ -21,7 +21,7 @@ import (
 )
 
 // Set via -ldflags "-X main.version=…"
-var version = "0.1.0"
+var version = "0.1.1"
 
 func main() {
 	listen := flag.String("listen", hub.DefaultListen, "Hub 监听地址（LAN，默认 0.0.0.0:9797）")
